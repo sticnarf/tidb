@@ -585,6 +585,51 @@ func (c *RegionCache) LocateRegionByID(bo *Backoffer, regionID uint64) (*KeyLoca
 	}, nil
 }
 
+type groupedMutations struct {
+	region RegionVerID
+	mutations []*mutationEx
+}
+
+// GroupKeysByRegion separates keys into groups by their belonging Regions.
+// Specially it also returns the first key's region which may be used as the
+// 'PrimaryLockKey' and should be committed ahead of others.
+// filter is used to filter some unwanted keys.
+func (c *RegionCache) GroupMutationsByRegion(bo *Backoffer, mutations []*mutationEx, filter func(key, regionStartKey []byte) bool) ([]groupedMutations, error) {
+	var (
+		groups []groupedMutations
+		lastLoc *KeyLocation
+		beginIdx int
+	)
+	for i, m := range mutations {
+		if lastLoc == nil || !lastLoc.Contains(m.Key) {
+			if lastLoc != nil {
+				groups = append(groups, groupedMutations{
+					lastLoc.Region,
+					mutations[beginIdx:i],
+				})
+			}
+			beginIdx = i
+			var err error
+			lastLoc, err = c.LocateKey(bo, m.Key)
+			if err != nil {
+				return nil, errors.Trace(err)
+			}
+			// TODO: Reconsider filter
+			if filter != nil && filter(m.Key, lastLoc.StartKey) {
+				beginIdx++
+				continue
+			}
+		}
+	}
+	if lastLoc != nil && beginIdx < len(mutations) {
+		groups = append(groups, groupedMutations{
+			lastLoc.Region,
+			mutations[beginIdx:],
+		})
+	}
+	return groups, nil
+}
+
 // GroupKeysByRegion separates keys into groups by their belonging Regions.
 // Specially it also returns the first key's region which may be used as the
 // 'PrimaryLockKey' and should be committed ahead of others.

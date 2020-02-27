@@ -68,13 +68,13 @@ func (s *testLockSuite) lockKey(c *C, key, value, primaryKey, primaryValue []byt
 	}
 
 	ctx := context.Background()
-	err = tpc.prewriteKeys(NewBackoffer(ctx, PrewriteMaxBackoff), tpc.keys)
+	err = tpc.prewriteMutations(NewBackoffer(ctx, PrewriteMaxBackoff), tpc.keys)
 	c.Assert(err, IsNil)
 
 	if commitPrimary {
 		tpc.commitTS, err = s.store.oracle.GetTimestamp(ctx)
 		c.Assert(err, IsNil)
-		err = tpc.commitKeys(NewBackoffer(ctx, CommitMaxBackoff), [][]byte{primaryKey})
+		err = tpc.commitMutations(NewBackoffer(ctx, CommitMaxBackoff), [][]byte{primaryKey})
 		c.Assert(err, IsNil)
 	}
 	return txn.startTS, tpc.commitTS
@@ -335,7 +335,7 @@ func (s *testLockSuite) TestCheckTxnStatusNoWait(c *C) {
 
 	// Only prewrite the secondary key to simulate a concurrent prewrite case:
 	// prewrite secondary regions success and prewrite the primary region is pending.
-	err = committer.prewriteKeys(NewBackoffer(context.Background(), PrewriteMaxBackoff), [][]byte{[]byte("second")})
+	err = committer.prewriteMutations(NewBackoffer(context.Background(), PrewriteMaxBackoff), [][]byte{[]byte("second")})
 	c.Assert(err, IsNil)
 
 	oracle := s.store.GetOracle()
@@ -352,7 +352,7 @@ func (s *testLockSuite) TestCheckTxnStatusNoWait(c *C) {
 
 	errCh := make(chan error)
 	go func() {
-		errCh <- committer.prewriteKeys(NewBackoffer(context.Background(), PrewriteMaxBackoff), [][]byte{[]byte("key")})
+		errCh <- committer.prewriteMutations(NewBackoffer(context.Background(), PrewriteMaxBackoff), [][]byte{[]byte("key")})
 	}()
 
 	lock := &Lock{
@@ -366,7 +366,7 @@ func (s *testLockSuite) TestCheckTxnStatusNoWait(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(status.ttl, Greater, uint64(0))
 	c.Assert(<-errCh, IsNil)
-	c.Assert(committer.cleanupKeys(bo, committer.keys), IsNil)
+	c.Assert(committer.cleanupMutations(bo, committer.keys), IsNil)
 
 	// Call getTxnStatusFromLock to cover TxnNotFound and retry timeout.
 	startTS, err := oracle.GetTimestamp(context.Background())
@@ -395,7 +395,7 @@ func (s *testLockSuite) prewriteTxnWithTTL(c *C, txn *tikvTxn, ttl uint64) {
 		elapsed := time.Since(txn.startTime) / time.Millisecond
 		committer.lockTTL = uint64(elapsed) + ttl
 	}
-	err = committer.prewriteKeys(NewBackoffer(context.Background(), PrewriteMaxBackoff), committer.keys)
+	err = committer.prewriteMutations(NewBackoffer(context.Background(), PrewriteMaxBackoff), committer.keys)
 	c.Assert(err, IsNil)
 }
 

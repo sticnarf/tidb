@@ -63,7 +63,7 @@ func (s *testSplitSuite) TestSplitBatchGet(c *C) {
 	keys := [][]byte{{'a'}, {'b'}, {'c'}}
 	_, region, err := s.store.regionCache.GroupKeysByRegion(s.bo, keys, nil)
 	c.Assert(err, IsNil)
-	batch := batchKeys{
+	batch := batchMutations{
 		region: region,
 		keys:   keys,
 	}

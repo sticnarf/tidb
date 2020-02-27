@@ -16,6 +16,7 @@ package tikv
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -259,7 +260,7 @@ func (txn *tikvTxn) Commit(ctx context.Context) error {
 	if err := committer.initKeysAndMutations(); err != nil {
 		return errors.Trace(err)
 	}
-	if len(committer.keys) == 0 {
+	if len(committer.mutations) == 0 {
 		return nil
 	}
 
@@ -285,7 +286,13 @@ func (txn *tikvTxn) Commit(ctx context.Context) error {
 	// latches enabled
 	// for transactions which need to acquire latches
 	start = time.Now()
-	lock := txn.store.txnLatches.Lock(committer.startTS, committer.keys)
+
+	var keys [][]byte
+	for _, mutation := range committer.mutations {
+		keys = append(keys, mutation.Key)
+	}
+
+	lock := txn.store.txnLatches.Lock(committer.startTS, keys)
 	commitDetail := committer.getDetail()
 	commitDetail.LocalLatchTime = time.Since(start)
 	if commitDetail.LocalLatchTime > 0 {
@@ -330,7 +337,11 @@ func (txn *tikvTxn) rollbackPessimisticLocks() error {
 	if len(txn.lockKeys) == 0 {
 		return nil
 	}
-	return txn.committer.pessimisticRollbackKeys(NewBackoffer(context.Background(), cleanupMaxBackoff), txn.lockKeys)
+	mut := make([]*mutationEx, len(txn.lockKeys))
+	for i, k := range txn.lockKeys {
+		mut[i] = &mutationEx{kvrpcpb.Mutation{Key:k}, false}
+	}
+	return txn.committer.pessimisticRollbackMutations(NewBackoffer(context.Background(), cleanupMaxBackoff), mut)
 }
 
 // lockWaitTime in ms, except that kv.LockAlwaysWait(0) means always wait lock, kv.LockNowait(-1) means nowait lock
@@ -387,10 +398,14 @@ func (txn *tikvTxn) LockKeys(ctx context.Context, lockCtx *kv.LockCtx, keysInput
 		// If the number of keys greater than 1, it can be on different region,
 		// concurrently execute on multiple regions may lead to deadlock.
 		txn.committer.isFirstLock = len(txn.lockKeys) == 0 && len(keys) == 1
-		err = txn.committer.pessimisticLockKeys(bo, lockCtx, keys)
+		mut := make([]*mutationEx, len(keys))
+		for i, k := range keys {
+			mut[i] = &mutationEx{kvrpcpb.Mutation{Key:k}, false}
+		}
+		err = txn.committer.pessimisticLockMutations(bo, lockCtx, mut)
 		if lockCtx.Killed != nil {
 			// If the kill signal is received during waiting for pessimisticLock,
-			// pessimisticLockKeys would handle the error but it doesn't reset the flag.
+			// pessimisticLockMutations would handle the error but it doesn't reset the flag.
 			// We need to reset the killed flag here.
 			atomic.CompareAndSwapUint32(lockCtx.Killed, 1, 0)
 		}
@@ -448,7 +463,11 @@ func (txn *tikvTxn) asyncPessimisticRollback(ctx context.Context, keys [][]byte)
 		failpoint.Inject("AsyncRollBackSleep", func() {
 			time.Sleep(100 * time.Millisecond)
 		})
-		err := committer.pessimisticRollbackKeys(NewBackoffer(ctx, pessimisticRollbackMaxBackoff).WithVars(txn.vars), keys)
+		mut := make([]*mutationEx, len(keys))
+		for i, k := range keys {
+			mut[i] = &mutationEx{kvrpcpb.Mutation{Key:k}, false}
+		}
+		err := committer.pessimisticRollbackMutations(NewBackoffer(ctx, pessimisticRollbackMaxBackoff).WithVars(txn.vars), mut)
 		if err != nil {
 			logutil.Logger(ctx).Warn("[kv] pessimisticRollback failed.", zap.Error(err))
 		}
