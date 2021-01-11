@@ -31,7 +31,6 @@ import (
 	"github.com/pingcap/tidb/kv"
 	"github.com/pingcap/tidb/kv/memdb"
 	"github.com/pingcap/tidb/metrics"
-	"github.com/pingcap/tidb/sessionctx"
 	"github.com/pingcap/tidb/util/execdetails"
 	"github.com/pingcap/tidb/util/logutil"
 	"go.uber.org/zap"
@@ -272,7 +271,7 @@ func (txn *tikvTxn) Commit(ctx context.Context) error {
 
 	// connID is used for log.
 	var connID uint64
-	val := ctx.Value(sessionctx.ConnID)
+	val := ctx.Value(0)
 	if val != nil {
 		connID = val.(uint64)
 	}
@@ -443,7 +442,7 @@ func (txn *tikvTxn) LockKeys(ctx context.Context, lockCtx *kv.LockCtx, keysInput
 			// connID is used for log.
 			var connID uint64
 			var err error
-			val := ctx.Value(sessionctx.ConnID)
+			val := ctx.Value(0)
 			if val != nil {
 				connID = val.(uint64)
 			}

@@ -25,7 +25,6 @@ import (
 	"github.com/pingcap/kvproto/pkg/kvrpcpb"
 	"github.com/pingcap/kvproto/pkg/metapb"
 	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/tablecodec"
 	"go.uber.org/atomic"
 )
 
@@ -389,22 +388,6 @@ func (c *Cluster) Merge(regionID1, regionID2 uint64) {
 
 	c.regions[regionID1].merge(c.regions[regionID2].Meta.GetEndKey())
 	delete(c.regions, regionID2)
-}
-
-// SplitTable evenly splits the data in table into count regions.
-// Only works for single store.
-func (c *Cluster) SplitTable(mvccStore MVCCStore, tableID int64, count int) {
-	tableStart := tablecodec.GenTableRecordPrefix(tableID)
-	tableEnd := tableStart.PrefixNext()
-	c.splitRange(mvccStore, NewMvccKey(tableStart), NewMvccKey(tableEnd), count)
-}
-
-// SplitIndex evenly splits the data in index into count regions.
-// Only works for single store.
-func (c *Cluster) SplitIndex(mvccStore MVCCStore, tableID, indexID int64, count int) {
-	indexStart := tablecodec.EncodeTableIndexPrefix(tableID, indexID)
-	indexEnd := indexStart.PrefixNext()
-	c.splitRange(mvccStore, NewMvccKey(indexStart), NewMvccKey(indexEnd), count)
 }
 
 // SplitKeys evenly splits the start, end key into "count" regions.
