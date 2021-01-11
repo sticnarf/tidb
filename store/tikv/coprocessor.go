@@ -47,7 +47,6 @@ type CopClient struct {
 // Send builds the request and gets the coprocessor iterator response.
 func (c *CopClient) Send(ctx context.Context, req *kv.Request, vars *kv.Variables, sessionMemTracker *memory.Tracker, enabledRateLimitAction bool) kv.Response {
 	panic("sending coprocessor requests is unsupported")
-	return nil
 }
 
 // copRanges is like []kv.KeyRange, but may has extra elements at head/tail.

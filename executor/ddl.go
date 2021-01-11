@@ -52,7 +52,6 @@ type DDLExec struct {
 // toErr converts the error to the ErrInfoSchemaChanged when the schema is outdated.
 func (e *DDLExec) toErr(err error) error {
 	panic("unreachable")
-	return nil
 }
 
 // Next implements the Executor Next interface.

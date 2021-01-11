@@ -232,51 +232,6 @@ func (s *testFailDBSuite) TestAddIndexFailed(c *C) {
 	tk.MustExec("admin check table t")
 }
 
-// TestFailSchemaSyncer test when the schema syncer is done,
-// should prohibit DML executing until the syncer is restartd by loadSchemaInLoop.
-func (s *testFailDBSuite) TestFailSchemaSyncer(c *C) {
-	tk := testkit.NewTestKit(c, s.store)
-	tk.MustExec("use test")
-	tk.MustExec("drop table if exists t")
-	tk.MustExec("create table t(a int)")
-	defer tk.MustExec("drop table if exists t")
-	originalRetryTimes := domain.SchemaOutOfDateRetryTimes
-	domain.SchemaOutOfDateRetryTimes = 1
-	defer func() {
-		domain.SchemaOutOfDateRetryTimes = originalRetryTimes
-	}()
-	c.Assert(s.dom.SchemaValidator.IsStarted(), IsTrue)
-	mockSyncer, ok := s.dom.DDL().SchemaSyncer().(*ddl.MockSchemaSyncer)
-	c.Assert(ok, IsTrue)
-
-	// make reload failed.
-	c.Assert(failpoint.Enable("github.com/pingcap/tidb/domain/ErrorMockReloadFailed", `return(true)`), IsNil)
-	mockSyncer.CloseSession()
-	// wait the schemaValidator is stopped.
-	for i := 0; i < 50; i++ {
-		if !s.dom.SchemaValidator.IsStarted() {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-
-	c.Assert(s.dom.SchemaValidator.IsStarted(), IsFalse)
-	_, err := tk.Exec("insert into t values(1)")
-	c.Assert(err, NotNil)
-	c.Assert(err.Error(), Equals, "[domain:8027]Information schema is out of date: schema failed to update in 1 lease, please make sure TiDB can connect to TiKV")
-	c.Assert(failpoint.Disable("github.com/pingcap/tidb/domain/ErrorMockReloadFailed"), IsNil)
-	// wait the schemaValidator is started.
-	for i := 0; i < 50; i++ {
-		if s.dom.SchemaValidator.IsStarted() {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	c.Assert(s.dom.SchemaValidator.IsStarted(), IsTrue)
-	_, err = tk.Exec("insert into t values(1)")
-	c.Assert(err, IsNil)
-}
-
 func (s *testFailDBSuite) TestGenGlobalIDFail(c *C) {
 	defer func() {
 		c.Assert(failpoint.Disable("github.com/pingcap/tidb/ddl/mockGenGlobalIDFail"), IsNil)

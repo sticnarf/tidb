@@ -89,7 +89,6 @@ func (s *testScanSuite) TestScan(c *C) {
 		}
 		err := txn.Commit(context.Background())
 		c.Assert(err, IsNil)
-		mockTableID := int64(999)
 		if rowNum > 123 {
 			_, err = s.store.SplitRegions(context.Background(), [][]byte{encodeKey(s.prefix, s08d("key", 123))}, false)
 			c.Assert(err, IsNil)

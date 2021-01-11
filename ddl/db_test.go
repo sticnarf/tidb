@@ -4923,12 +4923,6 @@ func (s *testDBSuite5) TestChangeColumnShouldKeepFlagWhenTypeIsTimestamp(c *C) {
 	c.Assert(originFlag, Equals, colCC.Flag)
 }
 
-func init() {
-	// Make sure it will only be executed once.
-	domain.SchemaOutOfDateRetryInterval = int64(50 * time.Millisecond)
-	domain.SchemaOutOfDateRetryTimes = int32(50)
-}
-
 func (s *testDBSuite4) TestGeneratedColumnWindowFunction(c *C) {
 	config.UpdateGlobal(func(conf *config.Config) {
 		conf.Experimental.AllowsExpressionIndex = true

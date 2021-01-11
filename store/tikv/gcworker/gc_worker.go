@@ -61,7 +61,6 @@ type GCWorker struct {
 // NewGCWorker creates a GCWorker instance.
 func NewGCWorker(store tikv.Storage, pdClient pd.Client) (tikv.GCHandler, error) {
 	panic("unsupported")
-	return nil, nil
 }
 
 const (

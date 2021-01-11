@@ -172,7 +172,6 @@ func (do *Domain) InfoSchema() infoschema.InfoSchema {
 // GetSnapshotInfoSchema gets a snapshot information schema.
 func (do *Domain) GetSnapshotInfoSchema(snapshotTS uint64) (infoschema.InfoSchema, error) {
 	panic("unsupported")
-	return nil, nil
 }
 
 // GetSnapshotMeta gets a new snapshot meta at startTS.
@@ -209,7 +208,6 @@ func (do *Domain) GetScope(status string) variable.ScopeFlag {
 // It's public in order to do the test.
 func (do *Domain) Reload() error {
 	panic("unsupported")
-	return nil
 }
 
 // LogSlowQuery keeps topN recent slow queries in domain.
@@ -418,13 +416,11 @@ const resourceIdleTimeout = 3 * time.Minute // resources in the ResourcePool wil
 // NewDomain creates a new domain. Should not create multiple domains for the same store.
 func NewDomain(store kv.Storage, ddlLease time.Duration, statsLease time.Duration, factory pools.Factory) *Domain {
 	panic("unsupported")
-	return nil
 }
 
 // Init initializes a domain.
 func (do *Domain) Init(ddlLease time.Duration, sysFactory func(*Domain) (pools.Resource, error)) error {
 	panic("unsupported")
-	return nil
 }
 
 type sessionPool struct {

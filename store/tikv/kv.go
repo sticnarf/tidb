@@ -268,7 +268,6 @@ func (s *tikvStore) TLSConfig() *tls.Config {
 // StartGCWorker starts GC worker, it's called in BootstrapSession, don't call this function more than once.
 func (s *tikvStore) StartGCWorker() error {
 	panic("should not be called")
-	return nil
 }
 
 func (s *tikvStore) runSafePointChecker() {
